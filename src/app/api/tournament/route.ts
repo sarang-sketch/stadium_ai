@@ -2,28 +2,19 @@ import { NextResponse } from 'next/server';
 import { withApiHandler } from '@/middleware/api-handler';
 import { TournamentCreationSchema } from '@/lib/validators';
 import { TournamentRepository } from '@/repositories/tournament.repository';
+import { parsePagination, paginate } from '@/utils/pagination';
 import type { Tournament } from '@/types/tournament.types';
-import type { PaginatedResult } from '@/types/api.types';
 
 /**
  * GET /api/tournament
  * Public. Lists tournaments as a paginated result ordered as stored.
  */
 export const GET = withApiHandler(async (req) => {
-  const params = req.nextUrl.searchParams;
-  const page = Math.max(1, Number(params.get('page') ?? '1') || 1);
-  const pageSize = Math.min(100, Math.max(1, Number(params.get('pageSize') ?? '20') || 20));
+  const { page, pageSize } = parsePagination(req.nextUrl.searchParams);
 
   const repo = new TournamentRepository();
   const all = await repo.findAll();
-  const items = all.slice((page - 1) * pageSize, page * pageSize);
-
-  const body: PaginatedResult<Tournament> = {
-    items,
-    total: all.length,
-    page,
-    pageSize,
-  };
+  const body = paginate<Tournament>(all, page, pageSize);
   return NextResponse.json(body);
 });
 

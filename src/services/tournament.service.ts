@@ -1,5 +1,10 @@
 import { GeminiClient } from '@/adapters/gemini.adapter';
+import { createLoggingAdapter } from '@/adapters/logging.adapter';
+import { ValidationError } from '@/utils/error-handler';
 
+const logger = createLoggingAdapter();
+
+/** AI-generated match outcome prediction with confidence scoring. */
 export interface MatchPrediction {
   matchId: string;
   predictedWinnerTeamId: string;
@@ -8,6 +13,7 @@ export interface MatchPrediction {
   source: 'gemini' | 'heuristic';
 }
 
+/** Predicts match outcomes using Gemini AI with win-rate heuristic fallback. */
 export class MatchPredictionService {
   constructor(private readonly gemini: GeminiClient) {}
 
@@ -18,6 +24,10 @@ export class MatchPredictionService {
    * @param teamBStats - Stats for Team B
    */
   async predictOutcome(matchId: string, teamAStats: Record<string, number>, teamBStats: Record<string, number>): Promise<MatchPrediction> {
+    if (!matchId) {
+      throw new ValidationError('matchId must be a non-empty string.');
+    }
+
     try {
       const prompt = `Predict winner between Team A (${JSON.stringify(teamAStats)}) and Team B (${JSON.stringify(teamBStats)})`;
       const aiResponse = await this.gemini.generate({ prompt });
@@ -32,7 +42,7 @@ export class MatchPredictionService {
         };
       }
     } catch (error) {
-      console.warn('Gemini prediction failed, falling back to heuristic', error);
+      logger.warn('Gemini prediction failed, falling back to heuristic', { errorMessage: error instanceof Error ? error.message : String(error) });
     }
 
     const teamAWinRate = teamAStats.wins / (teamAStats.matches || 1);
@@ -48,6 +58,7 @@ export class MatchPredictionService {
   }
 }
 
+/** Generates round-robin tournament fixtures with venue and date distribution. */
 export class SchedulerService {
   /**
    * Generates round-robin fixtures.
@@ -56,6 +67,13 @@ export class SchedulerService {
    * @param startDate - Tournament start date
    */
   generateFixtures(teams: string[], venues: string[], startDate: Date): Record<string, unknown>[] {
+    if (teams.length < 2) {
+      throw new ValidationError('At least 2 teams required');
+    }
+    if (venues.length === 0) {
+      throw new ValidationError('At least 1 venue required');
+    }
+
     const fixtures: Record<string, unknown>[] = [];
     for (let i = 0; i < teams.length; i++) {
       for (let j = i + 1; j < teams.length; j++) {
@@ -71,6 +89,7 @@ export class SchedulerService {
   }
 }
 
+/** Aggregated player performance statistics across tournament matches. */
 export interface PlayerAggregatedStats {
   playerId: string;
   totalMatches: number;
@@ -79,6 +98,7 @@ export interface PlayerAggregatedStats {
   rating: number;
 }
 
+/** Computes aggregated player statistics from match performance logs. */
 export class PlayerStatsService {
   /**
    * Aggregates player statistics.
@@ -86,6 +106,10 @@ export class PlayerStatsService {
    * @param matchLogs - Array of match performance logs
    */
   aggregateStats(playerId: string, matchLogs: Array<{ goals?: number; assists?: number }>): PlayerAggregatedStats {
+    if (!playerId) {
+      throw new ValidationError('playerId must be a non-empty string.');
+    }
+
     let goals = 0;
     let assists = 0;
     
@@ -104,6 +128,7 @@ export class PlayerStatsService {
   }
 }
 
+/** AI-generated tournament analysis with trend identification. */
 export interface TournamentInsight {
   title: string;
   description: string;
@@ -111,6 +136,7 @@ export interface TournamentInsight {
   source: 'gemini' | 'heuristic';
 }
 
+/** Generates post-match and tournament-wide AI analysis with trend extraction. */
 export class TournamentInsightsService {
   constructor(private readonly gemini: GeminiClient) {}
 
@@ -120,6 +146,10 @@ export class TournamentInsightsService {
    * @param matchResults - Aggregate match results
    */
   async generateInsights(tournamentId: string, matchResults: Record<string, unknown>[]): Promise<TournamentInsight> {
+    if (!tournamentId) {
+      throw new ValidationError('tournamentId must be a non-empty string.');
+    }
+
     try {
       const prompt = `Analyze tournament ${tournamentId} with results ${JSON.stringify(matchResults)} and extract key trends.`;
       const aiResponse = await this.gemini.generate({ prompt });
@@ -133,7 +163,7 @@ export class TournamentInsightsService {
         };
       }
     } catch (error) {
-      console.warn('Failed to generate insights via AI, falling back', error);
+      logger.warn('Failed to generate insights via AI, falling back', { errorMessage: error instanceof Error ? error.message : String(error) });
     }
 
     return {

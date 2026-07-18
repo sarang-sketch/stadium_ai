@@ -192,11 +192,11 @@ stadium-ai/
 │       ├── ticket.types.ts
 │       └── tournament.types.ts
 │
-├── __tests__/                 # Test suite (70 tests)
+├── __tests__/                 # Test suite (132 tests)
 │   ├── unit/
 │   │   ├── adapters/             # 11 adapter test files
 │   │   ├── services/             # 3 service test files
-│   │   └── utils/                # 3 utility test files
+│   │   └── utils/                # 4 utility test files
 │   └── integration/
 │       └── api/                  # API route integration tests
 │
@@ -217,8 +217,11 @@ stadium-ai/
 | **Clean Architecture** | Strict separation: Types → Adapters → Services → API Routes → UI |
 | **Repository Pattern** | Firestore collections abstracted behind type-safe repository interfaces |
 | **Adapter Pattern** | Every Google Cloud service wrapped in a non-throwing adapter with fallback |
-| **Service Layer** | Business logic isolated in `stadium.service`, `ticketing.service`, `tournament.service` |
+| **Service Layer** | Business logic isolated in `stadium.service`, `ticketing.service`, `tournament.service`, `chat.service`, `analytics.service` |
 | **Dependency Injection** | Services accept adapter instances, enabling easy testing and swapping |
+| **DRY Utilities** | Shared `parsePagination()` and `paginate<T>()` helpers eliminate code duplication across all list endpoints |
+| **Structured Logging** | All service and middleware layers use the `LoggingAdapter` — zero raw `console.*` calls |
+| **Input Validation** | Zod schemas at the API boundary + `ValidationError` guards at the service layer for defense-in-depth |
 
 ---
 
@@ -289,7 +292,7 @@ GOOGLE_MAPS_API_KEY=your_maps_api_key
 
 ## 🧪 Testing
 
-StadiumAI includes a comprehensive test suite with **70 tests across 18 test files**:
+StadiumAI includes a comprehensive test suite with **132 tests across 26 test files**:
 
 ```bash
 # Run all tests
@@ -307,11 +310,12 @@ npx vitest run __tests__/unit/adapters/gemini.adapter.test.ts
 | Category | Files | Tests | Coverage |
 |----------|-------|-------|----------|
 | **Adapter Tests** | 11 | 56 | All 11 Google Cloud adapters tested |
-| **Service Tests** | 3 | 10 | All 3 domain services tested |
-| **Utility Tests** | 3 | 11 | Helpers, formatters, toolchain smoke |
-| **Integration Tests** | 1 | 3 | API route integration |
+| **Service Tests** | 5 | 17 | All 5 domain services tested (stadium, ticketing, tournament, chat, analytics) |
+| **Middleware Tests** | 3 | 23 | Rate limiter, security headers, auth session verification |
+| **Utility Tests** | 4 | 34 | Helpers, formatters, pagination, error-handler hierarchy |
+| **Integration Tests** | 2 | 10 | API route integration (chat, seats, fraud, pricing) |
 | **Component Tests** | 1 | 1 | UI component smoke test |
-| **Total** | **18** | **70** | ✅ All passing |
+| **Total** | **26** | **132** | ✅ All passing |
 
 ### Test Architecture
 
@@ -330,16 +334,27 @@ __tests__/
 │   │   ├── logging.adapter.test.ts         # Structured logging
 │   │   └── secrets.adapter.test.ts         # Secret management
 │   ├── services/
-│   │   ├── stadium.service.test.ts         # Stadium operations
-│   │   ├── ticketing.service.test.ts       # Ticket management
-│   │   └── tournament.service.test.ts      # Tournament logic
+│   │   ├── stadium.service.test.ts         # Stadium operations (4 classes)
+│   │   ├── ticketing.service.test.ts       # Pricing + fraud services
+│   │   ├── tournament.service.test.ts      # Tournament logic (4 classes)
+│   │   ├── chat.service.test.ts            # Chatbot + translation
+│   │   └── analytics.service.test.ts       # Dashboard analytics
+│   ├── middleware/
+│   │   ├── rate-limiter.test.ts            # Token bucket rate limiting
+│   │   ├── security.test.ts               # Security headers + CORS + XSS
+│   │   └── auth.test.ts                   # Session verification + RBAC
 │   └── utils/
 │       ├── helpers.test.ts                 # Utility functions
 │       ├── formatters.test.ts              # Date/number formatters
+│       ├── pagination.test.ts              # Pagination parsing + slicing
+│       ├── error-handler.test.ts           # Error hierarchy + type guards
 │       └── toolchain.smoke.test.ts         # Build toolchain validation
-└── integration/
-    └── api/
-        └── chat.test.ts                    # Chat API endpoint
+├── integration/
+│   └── api/
+│       ├── chat.test.ts                    # Chat API endpoint
+│       └── stadium-ticketing.test.ts       # Seats, fraud, pricing APIs
+└── src/components/ui/
+    └── button.smoke.test.tsx               # React component rendering
 ```
 
 ---

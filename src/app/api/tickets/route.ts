@@ -2,8 +2,8 @@ import { NextResponse } from 'next/server';
 import { withApiHandler } from '@/middleware/api-handler';
 import { TicketPurchaseSchema } from '@/lib/validators';
 import { TicketRepository } from '@/repositories/ticket.repository';
+import { parsePagination, paginate } from '@/utils/pagination';
 import type { Ticket } from '@/types/ticket.types';
-import type { PaginatedResult } from '@/types/api.types';
 
 /**
  * GET /api/tickets
@@ -11,20 +11,11 @@ import type { PaginatedResult } from '@/types/api.types';
  */
 export const GET = withApiHandler(
   async (req, ctx) => {
-    const params = req.nextUrl.searchParams;
-    const page = Math.max(1, Number(params.get('page') ?? '1') || 1);
-    const pageSize = Math.min(100, Math.max(1, Number(params.get('pageSize') ?? '20') || 20));
+    const { page, pageSize } = parsePagination(req.nextUrl.searchParams);
 
     const repo = new TicketRepository();
     const all = await repo.findTicketsByUser(ctx.session!.uid);
-    const items = all.slice((page - 1) * pageSize, page * pageSize);
-
-    const body: PaginatedResult<Ticket> = {
-      items,
-      total: all.length,
-      page,
-      pageSize,
-    };
+    const body = paginate<Ticket>(all, page, pageSize);
     return NextResponse.json(body);
   },
   { requireRole: 'user' }

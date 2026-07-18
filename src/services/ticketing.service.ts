@@ -1,12 +1,18 @@
 import { GeminiClient } from '@/adapters/gemini.adapter';
 import { PricingRule } from '@/types/ticket.types';
+import { createLoggingAdapter } from '@/adapters/logging.adapter';
+import { ValidationError } from '@/utils/error-handler';
 
+const logger = createLoggingAdapter();
+
+/** The result of dynamic price calculation with AI reasoning. */
 export interface DynamicPriceResult {
   suggestedPrice: number;
   reason: string;
   source: 'gemini' | 'heuristic';
 }
 
+/** Demand-aware dynamic pricing engine using Gemini AI with rule-bounded heuristic fallback. */
 export class PricingEngine {
   constructor(private readonly gemini: GeminiClient) {}
 
@@ -18,6 +24,10 @@ export class PricingEngine {
    * @param rule - Pricing rules bounds
    */
   async calculatePrice(basePrice: number, occupancyRate: number, daysToEvent: number, rule: PricingRule): Promise<DynamicPriceResult> {
+    if (basePrice <= 0) {
+      throw new ValidationError('basePrice must be greater than 0.');
+    }
+
     try {
       const prompt = `Calculate dynamic price for base $${basePrice}, occupancy ${occupancyRate * 100}%, and ${daysToEvent} days left. Provide just the number.`;
       const aiResponse = await this.gemini.generate({ prompt });
@@ -35,7 +45,7 @@ export class PricingEngine {
         }
       }
     } catch (error) {
-      console.warn('Gemini pricing failed, falling back to heuristic', error);
+      logger.warn('Gemini pricing failed, falling back to heuristic', { errorMessage: error instanceof Error ? error.message : String(error) });
     }
 
     // Heuristic: increase price by 10% if occupancy > 80% and < 7 days left
@@ -54,6 +64,7 @@ export class PricingEngine {
   }
 }
 
+/** Fraud risk assessment result with indicator breakdown. */
 export interface FraudScoreResult {
   transactionId: string;
   riskScore: number; // 0-100
@@ -62,6 +73,7 @@ export interface FraudScoreResult {
   source: 'gemini' | 'heuristic';
 }
 
+/** Behavioral anomaly detection service scoring transactions for fraud risk via Gemini AI. */
 export class FraudDetectionService {
   constructor(private readonly gemini: GeminiClient) {}
 
@@ -71,6 +83,10 @@ export class FraudDetectionService {
    * @param transactionData - Details like velocity, IP, account age
    */
   async scoreTransaction(transactionId: string, transactionData: Record<string, unknown>): Promise<FraudScoreResult> {
+    if (!transactionId) {
+      throw new ValidationError('transactionId must be a non-empty string.');
+    }
+
     const THRESHOLD = 75;
     
     try {
@@ -88,7 +104,7 @@ export class FraudDetectionService {
         };
       }
     } catch (error) {
-      console.warn('Gemini fraud detection failed, falling back to heuristic', error);
+      logger.warn('Gemini fraud detection failed, falling back to heuristic', { errorMessage: error instanceof Error ? error.message : String(error) });
     }
 
     // Heuristic fallback

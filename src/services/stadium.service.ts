@@ -1,7 +1,12 @@
 import { GeminiClient } from '@/adapters/gemini.adapter';
 import { VisionAdapter } from '@/adapters/vision.adapter';
 import { MapsAdapter } from '@/adapters/maps.adapter';
+import { createLoggingAdapter } from '@/adapters/logging.adapter';
+import { ValidationError } from '@/utils/error-handler';
 
+const logger = createLoggingAdapter();
+
+/** A scored seat recommendation with AI reasoning. */
 export interface RankedSeatRecommendation {
   seatId: string;
   zoneId: string;
@@ -10,6 +15,7 @@ export interface RankedSeatRecommendation {
   source: 'gemini' | 'heuristic';
 }
 
+/** Recommends optimal seating using Gemini AI with heuristic fallback scoring. */
 export class SeatRecommendationService {
   constructor(private readonly gemini: GeminiClient) {}
 
@@ -21,6 +27,13 @@ export class SeatRecommendationService {
    * @returns Array of ranked seat recommendations
    */
   async recommendSeats(budget: number, groupSize: number, preferences: string[]): Promise<RankedSeatRecommendation[]> {
+    if (budget <= 0) {
+      throw new ValidationError('budget must be greater than 0.');
+    }
+    if (groupSize <= 0) {
+      throw new ValidationError('groupSize must be greater than 0.');
+    }
+
     try {
       const prompt = `Given budget ${budget}, group size ${groupSize}, and preferences [${preferences.join(', ')}], suggest the best seating zones.`;
       const aiResponse = await this.gemini.generate({ prompt });
@@ -32,7 +45,7 @@ export class SeatRecommendationService {
         ];
       }
     } catch (error) {
-      console.warn('Gemini recommendation failed, falling back to heuristic scoring', error);
+      logger.warn('Gemini recommendation failed, falling back to heuristic scoring', { errorMessage: error instanceof Error ? error.message : String(error) });
     }
     
     // Fallback heuristic scoring
@@ -42,6 +55,7 @@ export class SeatRecommendationService {
   }
 }
 
+/** Predicted crowd density metrics for a specific zone. */
 export interface CrowdDensityPrediction {
   zoneId: string;
   densityScore: number; // 0 to 1
@@ -49,6 +63,7 @@ export interface CrowdDensityPrediction {
   source: 'gemini' | 'heuristic';
 }
 
+/** Predicts crowd density using Cloud Vision AI analysis of camera feeds. */
 export class CrowdDensityService {
   constructor(private readonly vision: VisionAdapter) {}
 
@@ -59,6 +74,13 @@ export class CrowdDensityService {
    * @param ticketsSold - Current ticket sales for the zone
    */
   async predictDensity(zoneId: string, imageUrls: string[], ticketsSold: number): Promise<CrowdDensityPrediction> {
+    if (!zoneId) {
+      throw new ValidationError('zoneId must be a non-empty string.');
+    }
+    if (ticketsSold < 0) {
+      throw new ValidationError('ticketsSold must not be negative.');
+    }
+
     try {
       if (imageUrls.length > 0) {
         const analysis = await this.vision.analyzeCrowdImage(zoneId, imageUrls[0]);
@@ -70,7 +92,7 @@ export class CrowdDensityService {
         };
       }
     } catch (error) {
-      console.warn('Vision analysis failed, falling back to heuristic', error);
+      logger.warn('Vision analysis failed, falling back to heuristic', { errorMessage: error instanceof Error ? error.message : String(error) });
     }
 
     return {
@@ -82,12 +104,14 @@ export class CrowdDensityService {
   }
 }
 
+/** Estimated wait time at a gate or concession point. */
 export interface QueuePrediction {
   gateId: string;
   waitTimeMinutes: number;
   source: 'gemini' | 'heuristic';
 }
 
+/** Estimates queue wait times using Gemini AI with throughput-based heuristic fallback. */
 export class QueuePredictionService {
   constructor(private readonly gemini: GeminiClient) {}
 
@@ -98,6 +122,13 @@ export class QueuePredictionService {
    * @param historicalData - Historical throughput records
    */
   async estimateWaitTime(gateId: string, currentOccupancy: number, historicalData: Record<string, unknown>[]): Promise<QueuePrediction> {
+    if (!gateId) {
+      throw new ValidationError('gateId must be a non-empty string.');
+    }
+    if (currentOccupancy < 0) {
+      throw new ValidationError('currentOccupancy must not be negative.');
+    }
+
     try {
       const prompt = `Predict wait time for ${currentOccupancy} people given historical throughput data: ${JSON.stringify(historicalData)}.`;
       const prediction = await this.gemini.generate({ prompt });
@@ -106,7 +137,7 @@ export class QueuePredictionService {
         return { gateId, waitTimeMinutes: 12, source: 'gemini' };
       }
     } catch (error) {
-      console.warn('Queue prediction via Gemini failed, falling back to heuristic', error);
+      logger.warn('Queue prediction via Gemini failed, falling back to heuristic', { errorMessage: error instanceof Error ? error.message : String(error) });
     }
 
     // Heuristic: assume 10 people processed per minute
@@ -118,11 +149,13 @@ export class QueuePredictionService {
   }
 }
 
+/** A computed evacuation path with estimated traversal time. */
 export interface EvacuationRoute {
   path: string[];
   estimatedTimeSeconds: number;
 }
 
+/** Generates emergency evacuation routes using Google Maps with congestion penalties. */
 export class EmergencyRoutingService {
   constructor(private readonly maps: MapsAdapter) {}
 
@@ -147,7 +180,7 @@ export class EmergencyRoutingService {
         { path: routeData.steps, estimatedTimeSeconds: routeData.etaSeconds + congestionPenaltySeconds }
       ];
     } catch (error) {
-      console.error('Failed to generate routes via Maps API', error);
+      logger.error('Failed to generate routes via Maps API', { errorMessage: error instanceof Error ? error.message : String(error) });
       // Direct-path fallback when the Maps adapter is unavailable.
       return [
         { path: [startZoneId, exitGateId], estimatedTimeSeconds: 300 + congestionPenaltySeconds }

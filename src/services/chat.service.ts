@@ -1,13 +1,19 @@
 import { GeminiClient } from '@/adapters/gemini.adapter';
 import { TranslateAdapter } from '@/adapters/translate.adapter';
 import { SpeechAdapter } from '@/adapters/speech.adapter';
+import { createLoggingAdapter } from '@/adapters/logging.adapter';
+import { ValidationError } from '@/utils/error-handler';
 
+const logger = createLoggingAdapter();
+
+/** Structured response from the AI chatbot, including the source attribution. */
 export interface ChatResponse {
   message: string;
   language: string;
   source: 'gemini' | 'heuristic';
 }
 
+/** Multilingual AI chatbot service handling user queries via Gemini with translation support. */
 export class ChatbotService {
   constructor(
     private readonly gemini: GeminiClient,
@@ -22,6 +28,10 @@ export class ChatbotService {
    * @param isAudio - Whether the input was audio
    */
   async handleQuery(userMessage: string, targetLanguage: string = 'en', isAudio: boolean = false): Promise<ChatResponse> {
+    if (!userMessage || typeof userMessage !== 'string' || userMessage.trim().length === 0) {
+      throw new ValidationError('userMessage must be a non-empty string.');
+    }
+
     try {
       let processableMessage = userMessage;
       
@@ -50,7 +60,7 @@ export class ChatbotService {
         source: 'gemini'
       };
     } catch (error) {
-      console.error('Chatbot AI failed', error);
+      logger.error('Chatbot AI failed', { errorMessage: error instanceof Error ? error.message : String(error) });
       return {
         message: 'I am currently unable to process your request. Please check our FAQ page.',
         language: 'en',

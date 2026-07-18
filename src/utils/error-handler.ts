@@ -1,4 +1,7 @@
 import { NextResponse } from "next/server";
+import { createLoggingAdapter } from '@/adapters/logging.adapter';
+
+const logger = createLoggingAdapter();
 
 /**
  * Custom application error class to handle API and operational errors gracefully.
@@ -93,7 +96,7 @@ export function createErrorResponse(message: string, statusCode: number, errorCo
  * @returns A NextResponse representing the error.
  */
 export function handleApiError(error: unknown): NextResponse {
-  console.error("[API Error]:", error);
+  logger.error('[API Error]', { errorMessage: error instanceof Error ? error.message : String(error) });
 
   if (isAppError(error)) {
     return createErrorResponse(error.message, error.statusCode, error.errorCode);

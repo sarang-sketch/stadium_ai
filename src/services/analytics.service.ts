@@ -1,5 +1,10 @@
 import { BigQueryAdapter, BigQueryTournamentAggregates } from '@/adapters/bigquery.adapter';
+import { createLoggingAdapter } from '@/adapters/logging.adapter';
+import { ValidationError } from '@/utils/error-handler';
 
+const logger = createLoggingAdapter();
+
+/** Dashboard metrics aggregated from BigQuery tournament data. */
 export interface DashboardMetrics {
   totalRevenue: number;
   attendanceRate: number;
@@ -7,6 +12,7 @@ export interface DashboardMetrics {
   source: 'gemini' | 'heuristic';
 }
 
+/** Aggregates tournament analytics from BigQuery into dashboard-ready metrics. */
 export class InsightsService {
   constructor(private readonly bigquery: BigQueryAdapter) {}
 
@@ -15,6 +21,10 @@ export class InsightsService {
    * @param tournamentId - Target tournament ID
    */
   async getDashboardMetrics(tournamentId: string): Promise<DashboardMetrics> {
+    if (!tournamentId || typeof tournamentId !== 'string') {
+      throw new ValidationError('tournamentId must be a non-empty string.');
+    }
+
     try {
       const aggregates: BigQueryTournamentAggregates = await this.bigquery.queryTournamentAggregates(tournamentId);
       
@@ -30,7 +40,7 @@ export class InsightsService {
         source: 'heuristic'
       };
     } catch (error) {
-      console.error('BigQuery adapter failed', error);
+      logger.error('BigQuery adapter failed', { errorMessage: error instanceof Error ? error.message : String(error) });
     }
 
     // Fallback
