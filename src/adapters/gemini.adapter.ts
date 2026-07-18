@@ -103,7 +103,6 @@ export class GeminiAdapter implements GeminiClient {
     }
   }
 
-  /** Calls the real Gemini API, racing it against the configured timeout. */
   private async callRealApi(req: GeminiRequest, apiKey: string): Promise<string> {
     const client = new GoogleGenerativeAI(apiKey);
     const model = client.getGenerativeModel({ model: this.model });
@@ -112,15 +111,20 @@ export class GeminiAdapter implements GeminiClient {
       ? `${req.prompt}\n\nContext:\n${JSON.stringify(req.context)}`
       : req.prompt;
 
+    let timer: NodeJS.Timeout | undefined;
     const timeout = new Promise<never>((_, reject) => {
-      const timer = setTimeout(() => reject(new Error("Gemini API call timed out")), this.timeoutMs);
+      timer = setTimeout(() => reject(new Error("Gemini API call timed out")), this.timeoutMs);
       // Timers should not keep the process alive in test/serverless runs.
       if (typeof timer.unref === "function") timer.unref();
     });
 
     const call = model.generateContent(prompt).then((result) => result.response.text());
 
-    return Promise.race([call, timeout]);
+    try {
+      return await Promise.race([call, timeout]);
+    } finally {
+      if (timer) clearTimeout(timer);
+    }
   }
 
   /**

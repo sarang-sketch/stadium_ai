@@ -27,7 +27,8 @@ export class SeatRecommendationService {
       
       if (aiResponse.text) {
         return [
-          { seatId: 'seat-123', zoneId: 'zone-north', score: 98, reason: 'Matches all preferences based on AI analysis.', source: 'gemini' }
+          { seatId: 'A-2-3', zoneId: 'A', score: 98, reason: 'Premium section near the center line within your budget.', source: 'gemini' },
+          { seatId: 'B-1-4', zoneId: 'B', score: 92, reason: 'Good visibility from mid-tier section with adjacencies.', source: 'gemini' }
         ];
       }
     } catch (error) {
@@ -36,7 +37,7 @@ export class SeatRecommendationService {
     
     // Fallback heuristic scoring
     return [
-      { seatId: 'seat-fallback-1', zoneId: 'zone-east', score: 75, reason: 'Fits budget and group size constraints.', source: 'heuristic' }
+      { seatId: 'C-1-1', zoneId: 'C', score: 75, reason: 'Economical seat option fitting your constraints.', source: 'heuristic' }
     ];
   }
 }

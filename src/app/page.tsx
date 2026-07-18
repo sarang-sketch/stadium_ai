@@ -1,6 +1,3 @@
-"use client";
-
-import { motion, useScroll, useTransform } from "framer-motion";
 import {
   Zap,
   Shield,
@@ -15,28 +12,11 @@ import {
   Eye,
   CalendarDays,
   ArrowRight,
-  ChevronDown,
-  Sparkles,
   Globe,
 } from "lucide-react";
 import Link from "next/link";
-import Image from "next/image";
-import { useRef } from "react";
 import { Button } from "@/components/ui/button";
-
-/* ─── animation variants ──────────────────────────────────────────── */
-const stagger = {
-  hidden: { opacity: 0 },
-  visible: { opacity: 1, transition: { staggerChildren: 0.07, delayChildren: 0.2 } },
-};
-const fadeUp = {
-  hidden: { opacity: 0, y: 28 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.55, ease: "easeOut" } },
-};
-const scaleIn = {
-  hidden: { opacity: 0, scale: 0.9 },
-  visible: { opacity: 1, scale: 1, transition: { duration: 0.5 } },
-};
+import { HeroSection } from "./hero-section";
 
 /* ─── data ────────────────────────────────────────────────────────── */
 const AI_FEATURES = [
@@ -67,149 +47,39 @@ const GCP_SERVICES = [
   "Cloud Scheduler", "Cloud Logging", "Secret Manager", "Firebase Storage",
 ] as const;
 
-/* ─── page component ──────────────────────────────────────────────── */
-export default function HomePage() {
-  const heroRef = useRef<HTMLDivElement>(null);
-  const { scrollYProgress } = useScroll({ target: heroRef, offset: ["start start", "end start"] });
-  const heroY = useTransform(scrollYProgress, [0, 1], ["0%", "40%"]);
-  const heroOpacity = useTransform(scrollYProgress, [0, 0.8], [1, 0]);
+const ARCHITECTURE_COLUMNS = [
+  {
+    title: "Clean Architecture",
+    gradient: "from-blue-500/20 to-transparent",
+    items: ["Repository Pattern", "Service Layer", "Adapter Pattern", "Dependency Injection"],
+  },
+  {
+    title: "Security First",
+    gradient: "from-red-500/20 to-transparent",
+    items: ["Firebase Auth + RBAC", "Zod Input Validation", "Token Bucket Rate Limiter", "CSP / HSTS Headers"],
+  },
+  {
+    title: "Performance",
+    gradient: "from-green-500/20 to-transparent",
+    items: ["React Server Components", "Lazy Loading & Code Split", "Seeded-Hash Mock Adapters", "Optimized Production Builds"],
+  },
+] as const;
 
+/* ─── page component (Server Component) ─────────────────────────────
+ * Only the scroll-parallax hero requires client-side hooks. Everything
+ * below is static content, so it is rendered directly on the server —
+ * no JS shipped for these sections beyond the shared Button primitive.
+ * ────────────────────────────────────────────────────────────────── */
+export default function HomePage() {
   return (
     <div className="min-h-screen flex flex-col bg-[#0a0a0f]">
-      {/* ═══════════════════ HERO ═══════════════════════════════════ */}
-      <header ref={heroRef} role="banner" className="relative min-h-screen flex flex-col overflow-hidden">
-        {/* Background image with parallax */}
-        <motion.div className="absolute inset-0 z-0" style={{ y: heroY }}>
-          <Image
-            src="/hero-stadium.png"
-            alt=""
-            fill
-            priority
-            className="object-cover object-center"
-            sizes="100vw"
-            quality={90}
-          />
-          {/* Gradient overlays for readability */}
-          <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/40 to-[#0a0a0f]" />
-          <div className="absolute inset-0 bg-gradient-to-r from-blue-950/40 via-transparent to-indigo-950/40" />
-        </motion.div>
-
-        {/* Animated grain texture */}
-        <div className="absolute inset-0 z-[1] opacity-[0.03] pointer-events-none bg-[url('data:image/svg+xml,%3Csvg viewBox=%270 0 256 256%27 xmlns=%27http://www.w3.org/2000/svg%27%3E%3Cfilter id=%27noise%27%3E%3CfeTurbulence type=%27fractalNoise%27 baseFrequency=%270.9%27 stitchTiles=%27stitch%27/%3E%3C/filter%3E%3Crect width=%27100%25%27 height=%27100%25%27 filter=%27url(%23noise)%27/%3E%3C/svg%3E')]" />
-
-        {/* Navigation */}
-        <nav
-          role="navigation"
-          aria-label="Main navigation"
-          className="relative z-10 flex items-center justify-between px-6 py-5 max-w-7xl mx-auto w-full"
-        >
-          <div className="flex items-center gap-2.5">
-            <div className="h-9 w-9 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-400 flex items-center justify-center">
-              <Zap className="h-5 w-5 text-white" aria-hidden="true" />
-            </div>
-            <span className="text-xl font-bold text-white tracking-tight">StadiumAI</span>
-          </div>
-          <div className="hidden md:flex items-center gap-1">
-            {["Dashboard", "Stadium", "Tournament", "Tickets"].map((label) => (
-              <Link
-                key={label}
-                href={`/${label.toLowerCase()}`}
-                className="px-3.5 py-2 rounded-lg text-sm font-medium text-white/70 hover:text-white hover:bg-white/10 transition-all"
-              >
-                {label}
-              </Link>
-            ))}
-          </div>
-          <Link href="/dashboard">
-            <Button className="bg-white/10 backdrop-blur-md border border-white/20 text-white hover:bg-white/20 h-10 px-5">
-              Launch App
-            </Button>
-          </Link>
-        </nav>
-
-        {/* Hero content */}
-        <motion.div
-          style={{ opacity: heroOpacity }}
-          className="relative z-10 flex-1 flex flex-col items-center justify-center text-center px-6 pb-32"
-        >
-          <motion.div
-            initial={{ opacity: 0, y: 40 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, ease: "easeOut" }}
-          >
-            {/* Badge */}
-            <motion.span
-              initial={{ opacity: 0, scale: 0.8 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: 0.3 }}
-              className="inline-flex items-center gap-2 rounded-full bg-white/10 backdrop-blur-md border border-white/20 px-4 py-1.5 text-xs font-medium text-blue-300 mb-8"
-            >
-              <Sparkles className="h-3.5 w-3.5 text-blue-400" aria-hidden="true" />
-              Powered by Google Gemini 2.0 Flash
-            </motion.span>
-
-            {/* Heading */}
-            <h1 className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-black text-white tracking-tighter leading-[0.9]">
-              Smart{" "}
-              <span className="bg-gradient-to-r from-blue-400 via-cyan-300 to-blue-400 bg-clip-text text-transparent">
-                Stadiums
-              </span>
-              <br />
-              <span className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-white/60 tracking-tight">
-                & Tournament Operations
-              </span>
-            </h1>
-
-            <p className="mt-8 text-base sm:text-lg text-slate-300/90 max-w-2xl mx-auto leading-relaxed font-light">
-              AI-powered stadium management platform — from smart seat recommendations
-              and real-time crowd density prediction to dynamic pricing, fraud detection,
-              and automated tournament scheduling. All running on Google Cloud.
-            </p>
-
-            {/* CTAs */}
-            <div className="mt-10 flex flex-wrap justify-center gap-4">
-              <Link href="/dashboard">
-                <Button className="h-13 px-8 text-base font-semibold bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-500 hover:to-cyan-400 text-white shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 transition-all hover:scale-[1.02]">
-                  Open Dashboard
-                  <ArrowRight className="ml-2 h-4 w-4" aria-hidden="true" />
-                </Button>
-              </Link>
-              <Link href="/stadium">
-                <Button variant="outline" className="h-13 px-8 text-base font-semibold text-white border-white/20 hover:bg-white/10 backdrop-blur-sm">
-                  Explore Stadium
-                </Button>
-              </Link>
-            </div>
-          </motion.div>
-        </motion.div>
-
-        {/* Scroll indicator */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 1.5 }}
-          className="absolute bottom-8 left-1/2 -translate-x-1/2 z-10 flex flex-col items-center gap-2"
-        >
-          <span className="text-xs text-white/40 uppercase tracking-widest">Scroll</span>
-          <motion.div
-            animate={{ y: [0, 8, 0] }}
-            transition={{ repeat: Infinity, duration: 1.5, ease: "easeInOut" }}
-          >
-            <ChevronDown className="h-5 w-5 text-white/40" aria-hidden="true" />
-          </motion.div>
-        </motion.div>
-      </header>
+      {/* ═══════════════════ HERO (client island) ═══════════════════ */}
+      <HeroSection />
 
       {/* ═══════════════════ LIVE STATS BAR ═════════════════════════ */}
       <section className="relative z-20 -mt-20">
         <div className="max-w-5xl mx-auto px-6">
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.6 }}
-            className="grid grid-cols-2 md:grid-cols-4 gap-px rounded-2xl overflow-hidden bg-white/5 backdrop-blur-xl border border-white/10 shadow-2xl"
-          >
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-px rounded-2xl overflow-hidden bg-white/5 backdrop-blur-xl border border-white/10 shadow-2xl">
             {STATS.map((stat) => (
               <div key={stat.label} className="bg-[#0a0a0f]/80 backdrop-blur-xl p-6 text-center">
                 <p className="text-3xl md:text-4xl font-black text-white">
@@ -219,19 +89,14 @@ export default function HomePage() {
                 <p className="text-xs text-white/50 mt-1 uppercase tracking-wider font-medium">{stat.label}</p>
               </div>
             ))}
-          </motion.div>
+          </div>
         </div>
       </section>
 
       {/* ═══════════════════ FEATURES ═══════════════════════════════ */}
       <main id="main-content" role="main" className="flex-1 bg-[#0a0a0f]">
         <section aria-labelledby="features-heading" className="py-28 px-6 max-w-7xl mx-auto">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="text-center mb-16"
-          >
+          <div className="text-center mb-16">
             <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-500/10 border border-blue-500/20 px-3 py-1 text-xs font-medium text-blue-400 mb-4">
               <Zap className="h-3 w-3" aria-hidden="true" />
               AI-Powered
@@ -243,19 +108,12 @@ export default function HomePage() {
               Every feature uses Gemini AI with intelligent heuristic fallbacks — ensuring 100% uptime,
               zero-dependency operation, and graceful degradation.
             </p>
-          </motion.div>
+          </div>
 
-          <motion.div
-            variants={stagger}
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true, amount: 0.05 }}
-            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"
-          >
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {AI_FEATURES.map((f) => (
-              <motion.article
+              <article
                 key={f.title}
-                variants={fadeUp}
                 className="group relative rounded-2xl border border-white/[0.06] bg-white/[0.02] p-6 transition-all duration-300 hover:bg-white/[0.05] hover:border-white/[0.12] hover:shadow-xl hover:shadow-blue-500/5"
                 tabIndex={0}
                 aria-label={f.title}
@@ -265,48 +123,37 @@ export default function HomePage() {
                 <f.icon className={`h-7 w-7 ${f.iconColor} mb-4 group-hover:scale-110 transition-transform`} aria-hidden="true" />
                 <h3 className="font-semibold text-white text-sm mb-2">{f.title}</h3>
                 <p className="text-xs text-white/45 leading-relaxed">{f.desc}</p>
-              </motion.article>
+              </article>
             ))}
-          </motion.div>
+          </div>
         </section>
 
         {/* ═══════════════════ GCP SERVICES ═══════════════════════════ */}
         <section aria-labelledby="gcp-heading" className="py-20 px-6 border-t border-white/[0.04]">
           <div className="max-w-5xl mx-auto text-center">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-            >
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-green-500/10 border border-green-500/20 px-3 py-1 text-xs font-medium text-green-400 mb-4">
-                <Globe className="h-3 w-3" aria-hidden="true" />
-                Cloud Native
-              </span>
-              <h2 id="gcp-heading" className="text-3xl font-bold tracking-tight text-white mb-10">
-                Built on Google Cloud
-              </h2>
-            </motion.div>
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-green-500/10 border border-green-500/20 px-3 py-1 text-xs font-medium text-green-400 mb-4">
+              <Globe className="h-3 w-3" aria-hidden="true" />
+              Cloud Native
+            </span>
+            <h2 id="gcp-heading" className="text-3xl font-bold tracking-tight text-white mb-10">
+              Built on Google Cloud
+            </h2>
 
-            <motion.div
-              variants={stagger}
-              initial="hidden"
-              whileInView="visible"
-              viewport={{ once: true }}
+            <div
               className="flex flex-wrap justify-center gap-3"
               role="list"
               aria-label="Google Cloud services used"
             >
               {GCP_SERVICES.map((service) => (
-                <motion.span
+                <span
                   key={service}
-                  variants={scaleIn}
                   role="listitem"
                   className="inline-flex items-center rounded-full bg-white/[0.04] border border-white/[0.08] px-4 py-2 text-sm font-medium text-white/70 hover:bg-white/[0.08] hover:text-white transition-all cursor-default"
                 >
                   {service}
-                </motion.span>
+                </span>
               ))}
-            </motion.div>
+            </div>
           </div>
         </section>
 
@@ -315,33 +162,10 @@ export default function HomePage() {
           <h2 id="arch-heading" className="text-2xl font-bold tracking-tight text-center text-white mb-12">
             Production-Grade Architecture
           </h2>
-          <motion.div
-            variants={stagger}
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true }}
-            className="grid sm:grid-cols-3 gap-5"
-          >
-            {[
-              {
-                title: "Clean Architecture",
-                gradient: "from-blue-500/20 to-transparent",
-                items: ["Repository Pattern", "Service Layer", "Adapter Pattern", "Dependency Injection"],
-              },
-              {
-                title: "Security First",
-                gradient: "from-red-500/20 to-transparent",
-                items: ["Firebase Auth + RBAC", "Zod Input Validation", "Token Bucket Rate Limiter", "CSP / HSTS Headers"],
-              },
-              {
-                title: "Performance",
-                gradient: "from-green-500/20 to-transparent",
-                items: ["React Server Components", "Lazy Loading & Code Split", "Seeded-Hash Mock Adapters", "Optimized Production Builds"],
-              },
-            ].map((col) => (
-              <motion.div
+          <div className="grid sm:grid-cols-3 gap-5">
+            {ARCHITECTURE_COLUMNS.map((col) => (
+              <div
                 key={col.title}
-                variants={fadeUp}
                 className="relative rounded-2xl border border-white/[0.06] bg-white/[0.02] p-6 overflow-hidden"
               >
                 <div className={`absolute top-0 left-0 w-full h-24 bg-gradient-to-b ${col.gradient} pointer-events-none`} />
@@ -354,19 +178,14 @@ export default function HomePage() {
                     </li>
                   ))}
                 </ul>
-              </motion.div>
+              </div>
             ))}
-          </motion.div>
+          </div>
         </section>
 
         {/* ═══════════════════ CTA BANNER ═══════════════════════════ */}
         <section className="py-24 px-6">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="max-w-4xl mx-auto relative rounded-3xl overflow-hidden"
-          >
+          <div className="max-w-4xl mx-auto relative rounded-3xl overflow-hidden">
             <div className="absolute inset-0 bg-gradient-to-r from-blue-600 via-blue-700 to-indigo-700" />
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_50%,rgba(59,130,246,0.3),transparent_70%)]" />
             <div className="relative p-12 md:p-16 text-center">
@@ -391,7 +210,7 @@ export default function HomePage() {
                 </Link>
               </div>
             </div>
-          </motion.div>
+          </div>
         </section>
       </main>
 

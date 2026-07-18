@@ -92,23 +92,60 @@ export function Chatbot() {
     [],
   );
 
+  const [isTyping, setIsTyping] = useState(false);
+
   /* ── Send message handler ─────────────────────────────────────── */
-  const handleSend = () => {
-    if (!input.trim()) return;
-    const userMsg: Message = { id: Date.now().toString(), text: input, sender: 'user' };
+  const handleSend = async () => {
+    const trimmedInput = input.trim();
+    if (!trimmedInput || isTyping) return;
+
+    const userMsg: Message = { id: Date.now().toString(), text: trimmedInput, sender: 'user' };
     setMessages((prev) => [...prev, userMsg]);
     setInput('');
-    setTimeout(() => {
+    setIsTyping(true);
+
+    try {
+      const res = await fetch('/api/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer valid-user-token',
+        },
+        body: JSON.stringify({
+          message: trimmedInput,
+          targetLanguage: 'en',
+          isAudio: false,
+        }),
+      });
+
+      if (!res.ok) {
+        throw new Error('Chat API returned error status');
+      }
+
+      const data = await res.json();
       setMessages((prev) => [
         ...prev,
         {
-          id: (Date.now() + 1).toString(),
-          text: 'I can help analyze crowd density or predict match outcomes.',
+          id: Date.now().toString(),
+          text: data.message || 'Sorry, I encountered an error.',
           sender: 'ai',
-          source: 'gemini',
+          source: data.source || 'gemini',
         },
       ]);
-    }, 1000);
+    } catch (error) {
+      console.error('Failed to send message:', error);
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: Date.now().toString(),
+          text: 'Sorry, I could not connect to the assistant service. Please check your connection.',
+          sender: 'ai',
+          source: 'heuristic',
+        },
+      ]);
+    } finally {
+      setIsTyping(false);
+    }
   };
 
   return (
@@ -192,6 +229,15 @@ export function Chatbot() {
                   )}
                 </div>
               ))}
+              {isTyping && (
+                <div className="mr-auto items-start flex flex-col max-w-[85%]">
+                  <div className="px-4 py-2 rounded-2xl bg-muted rounded-tl-sm text-sm text-muted-foreground flex items-center space-x-1">
+                    <span className="w-1.5 h-1.5 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                    <span className="w-1.5 h-1.5 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                    <span className="w-1.5 h-1.5 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                  </div>
+                </div>
+              )}
               <div ref={messagesEndRef} />
             </div>
 

@@ -1,193 +1,68 @@
-"use client";
-
-import { motion } from "framer-motion";
+import dynamic from "next/dynamic";
 import {
-  MapPin,
-  Users,
   BarChart3,
   AlertTriangle,
   Zap,
-  ArrowLeft,
 } from "lucide-react";
-import Link from "next/link";
-import { Button } from "@/components/ui/button";
-import type { SeatStatus, CrowdDensityLevel } from "@/types/stadium.types";
+import { PageHeader } from "@/components/layout/page-header";
+import { LoadingSkeleton } from "@/components/shared/loading-skeleton";
 
-/** Demonstration seat data for the seat map. */
-const DEMO_SECTIONS = ["A", "B", "C", "D"] as const;
-const ROWS_PER_SECTION = 4;
-const SEATS_PER_ROW = 8;
-
-/** Generates demonstration seat map data. */
-function generateDemoSeats() {
-  const seats: Array<{
-    id: string;
-    section: string;
-    row: string;
-    seatNumber: number;
-    status: SeatStatus;
-    price: number;
-  }> = [];
-
-  for (const section of DEMO_SECTIONS) {
-    for (let r = 1; r <= ROWS_PER_SECTION; r++) {
-      for (let s = 1; s <= SEATS_PER_ROW; s++) {
-        const hash = (section.charCodeAt(0) * 31 + r * 7 + s * 3) % 100;
-        const status: SeatStatus =
-          hash < 40 ? "available" : hash < 75 ? "sold" : "reserved";
-        seats.push({
-          id: `${section}-${r}-${s}`,
-          section,
-          row: `R${r}`,
-          seatNumber: s,
-          status,
-          price: section === "A" ? 150 : section === "B" ? 100 : 60,
-        });
-      }
-    }
+/**
+ * Interactive seat map and crowd density heatmap are the heaviest,
+ * decorative client islands on this page (per-seat buttons + animated
+ * progress bars) and aren't needed for first paint, so they're
+ * lazy-loaded with `next/dynamic`.
+ */
+const SeatMapSection = dynamic(
+  () => import("./seat-map-section").then((mod) => mod.SeatMapSection),
+  {
+    loading: () => (
+      <div className="rounded-xl border border-border bg-card p-6 space-y-3" aria-hidden="true">
+        <LoadingSkeleton variant="card" className="h-64" />
+      </div>
+    ),
   }
-  return seats;
-}
+);
 
-/** Demonstration crowd density data per zone. */
-const DEMO_ZONES: Array<{
-  zoneId: string;
-  name: string;
-  level: CrowdDensityLevel;
-  occupancy: number;
-}> = [
-  { zoneId: "north", name: "North Stand", level: "high", occupancy: 0.85 },
-  { zoneId: "south", name: "South Stand", level: "moderate", occupancy: 0.62 },
-  { zoneId: "east", name: "East Wing", level: "low", occupancy: 0.34 },
-  { zoneId: "west", name: "West Wing", level: "critical", occupancy: 0.94 },
-];
-
-/** Color mapping for seat statuses. */
-const SEAT_COLORS: Record<SeatStatus, string> = {
-  available: "bg-green-500 hover:bg-green-400",
-  reserved: "bg-amber-500",
-  sold: "bg-red-400",
-};
-
-/** Color mapping for crowd density levels. */
-const DENSITY_COLORS: Record<CrowdDensityLevel, string> = {
-  low: "bg-green-500/20 border-green-500/40 text-green-300",
-  moderate: "bg-amber-500/20 border-amber-500/40 text-amber-300",
-  high: "bg-orange-500/20 border-orange-500/40 text-orange-300",
-  critical: "bg-red-500/20 border-red-500/40 text-red-300",
-};
+const CrowdDensitySection = dynamic(
+  () => import("./crowd-density-section").then((mod) => mod.CrowdDensitySection),
+  {
+    loading: () => (
+      <div className="rounded-xl border border-border bg-card p-5 space-y-3" aria-hidden="true">
+        <LoadingSkeleton variant="card" className="h-56" />
+      </div>
+    ),
+  }
+);
 
 /**
  * Stadium management page with interactive seat map, crowd density heatmap,
  * queue predictions, and emergency routing controls.
+ *
+ * Rendered as a Server Component — the seat map and crowd density panels
+ * are the only sections that need client-side interactivity/animation, so
+ * they're isolated into lazy-loaded client islands. Queue predictions and
+ * emergency routing are static display content rendered on the server.
  */
 export default function StadiumPage() {
-  const seats = generateDemoSeats();
-
   return (
     <div className="min-h-screen bg-background">
-      <header role="banner" className="sticky top-0 z-40 border-b border-border bg-background/80 backdrop-blur-md">
-        <div className="flex items-center gap-4 px-6 py-3 max-w-7xl mx-auto">
-          <Link href="/dashboard" aria-label="Back to Dashboard">
-            <Button variant="ghost" size="icon-sm">
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
-          </Link>
-          <div>
-            <h1 className="font-bold text-lg">Stadium Management</h1>
-            <p className="text-xs text-muted-foreground">AI-powered seat maps, crowd density & emergency routing</p>
-          </div>
-        </div>
-      </header>
+      <PageHeader
+        title="Stadium Management"
+        subtitle="AI-powered seat maps, crowd density & emergency routing"
+        backHref="/dashboard"
+      />
 
       <main id="main-content" role="main" className="max-w-7xl mx-auto px-6 py-8 space-y-8">
-        {/* Seat Map */}
-        <section aria-labelledby="seatmap-heading">
-          <div className="flex items-center justify-between mb-4">
-            <h2 id="seatmap-heading" className="text-xl font-bold flex items-center gap-2">
-              <MapPin className="h-5 w-5 text-blue-500" aria-hidden="true" />
-              Interactive Seat Map
-            </h2>
-            <div className="flex items-center gap-4 text-xs" role="legend" aria-label="Seat status legend">
-              {(["available", "reserved", "sold"] as SeatStatus[]).map((status) => (
-                <span key={status} className="flex items-center gap-1.5">
-                  <span className={`h-3 w-3 rounded-sm ${SEAT_COLORS[status]}`} aria-hidden="true" />
-                  <span className="capitalize">{status}</span>
-                </span>
-              ))}
-            </div>
-          </div>
-          <div className="rounded-xl border border-border bg-card p-6 overflow-x-auto">
-            <div className="grid grid-cols-4 gap-6 min-w-[600px]" role="grid" aria-label="Stadium seat map">
-              {DEMO_SECTIONS.map((section) => (
-                <div key={section} role="rowgroup" aria-label={`Section ${section}`}>
-                  <h3 className="text-sm font-semibold text-center mb-2">Section {section}</h3>
-                  <div className="space-y-1">
-                    {Array.from({ length: ROWS_PER_SECTION }, (_, r) => (
-                      <div key={r} className="flex gap-1 justify-center" role="row">
-                        {seats
-                          .filter((s) => s.section === section && s.row === `R${r + 1}`)
-                          .map((seat) => (
-                            <button
-                              key={seat.id}
-                              role="gridcell"
-                              aria-label={`Section ${seat.section}, Row ${seat.row}, Seat ${seat.seatNumber}, ${seat.status}, $${seat.price}`}
-                              disabled={seat.status !== "available"}
-                              className={`h-6 w-6 rounded-sm text-[9px] font-mono text-white transition-all ${SEAT_COLORS[seat.status]} ${seat.status === "available" ? "cursor-pointer focus:ring-2 focus:ring-ring" : "cursor-not-allowed opacity-70"}`}
-                              title={`${seat.id} - $${seat.price} - ${seat.status}`}
-                            >
-                              {seat.seatNumber}
-                            </button>
-                          ))}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
-            <div className="mt-4 text-center">
-              <div className="inline-block rounded-lg bg-muted px-8 py-2 text-xs font-medium text-muted-foreground">
-                ⚽ PITCH
-              </div>
-            </div>
-          </div>
-        </section>
+        {/* Seat Map (lazy-loaded client island) */}
+        <SeatMapSection />
 
         {/* Crowd Density + Queue Predictions */}
         <div className="grid md:grid-cols-2 gap-6">
-          {/* Crowd Density Heatmap */}
-          <section aria-labelledby="density-heading">
-            <h2 id="density-heading" className="text-xl font-bold flex items-center gap-2 mb-4">
-              <Users className="h-5 w-5 text-orange-500" aria-hidden="true" />
-              Crowd Density
-            </h2>
-            <div className="rounded-xl border border-border bg-card p-5 space-y-3">
-              {DEMO_ZONES.map((zone) => (
-                <div
-                  key={zone.zoneId}
-                  className={`rounded-lg border p-4 ${DENSITY_COLORS[zone.level]}`}
-                  role="article"
-                  aria-label={`${zone.name}: ${zone.level} density, ${Math.round(zone.occupancy * 100)}% occupancy`}
-                >
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="font-semibold text-sm">{zone.name}</span>
-                    <span className="text-xs font-medium uppercase">{zone.level}</span>
-                  </div>
-                  <div className="w-full h-2 bg-black/10 rounded-full overflow-hidden" role="progressbar" aria-valuenow={Math.round(zone.occupancy * 100)} aria-valuemin={0} aria-valuemax={100}>
-                    <motion.div
-                      initial={{ width: 0 }}
-                      animate={{ width: `${zone.occupancy * 100}%` }}
-                      transition={{ duration: 1, ease: "easeOut" }}
-                      className="h-full bg-current rounded-full"
-                    />
-                  </div>
-                  <p className="text-xs mt-1">{Math.round(zone.occupancy * 100)}% capacity</p>
-                </div>
-              ))}
-            </div>
-          </section>
+          {/* Crowd Density Heatmap (lazy-loaded client island) */}
+          <CrowdDensitySection />
 
-          {/* Queue Predictions */}
+          {/* Queue Predictions (static) */}
           <section aria-labelledby="queue-heading">
             <h2 id="queue-heading" className="text-xl font-bold flex items-center gap-2 mb-4">
               <BarChart3 className="h-5 w-5 text-green-500" aria-hidden="true" />
@@ -216,7 +91,7 @@ export default function StadiumPage() {
           </section>
         </div>
 
-        {/* Emergency Routing */}
+        {/* Emergency Routing (static) */}
         <section aria-labelledby="emergency-heading">
           <h2 id="emergency-heading" className="text-xl font-bold flex items-center gap-2 mb-4">
             <AlertTriangle className="h-5 w-5 text-red-500" aria-hidden="true" />

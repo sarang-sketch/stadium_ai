@@ -26,12 +26,23 @@ export function rateLimiter(options: RateLimiterOptions) {
   return async (req: NextRequest): Promise<NextResponse | null> => {
     // Note: In Next.js Edge runtime, IP might be in headers
     const ip = req.headers.get('x-forwarded-for') || '127.0.0.1';
+    const path = req.nextUrl?.pathname || '';
+    const key = `${ip}:${path}`;
     const now = Date.now();
 
-    let record = store.get(ip);
+    // Prevent memory leaks: clean up expired records when the store grows
+    if (store.size > 500) {
+      for (const [k, v] of store.entries()) {
+        if (v.resetTime < now) {
+          store.delete(k);
+        }
+      }
+    }
+
+    let record = store.get(key);
     if (!record || record.resetTime < now) {
       record = { count: 1, resetTime: now + options.windowMs };
-      store.set(ip, record);
+      store.set(key, record);
       return null; // Proceed
     }
 
@@ -43,7 +54,7 @@ export function rateLimiter(options: RateLimiterOptions) {
     }
 
     record.count++;
-    store.set(ip, record);
+    store.set(key, record);
     
     return null; // Proceed
   };
